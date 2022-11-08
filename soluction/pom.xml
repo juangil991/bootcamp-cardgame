@@ -11,9 +11,6 @@
     <modules>
         <module>domain</module>
         <module>business</module>
-        <module>applications/app-queries</module>
-        <module>applications/app-command</module>
-        <module>applications/app-proxy</module>
     </modules>
     <parent>
         <groupId>org.springframework.boot</groupId>
