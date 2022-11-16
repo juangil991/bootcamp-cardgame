@@ -7,15 +7,13 @@ spring:
   application:
     name: gamecommands
   main:
+    lazy-initialization: true
     banner-mode: off
   output:
     ansi:
       enabled: ALWAYS
   rabbitmq:
-    addresses: ${RABBITMQ_URI:amqp://guest:guest@localhost:5672}  
-  data:
-    mongodb:
-        uri: ${MONGO_URI:mongodb://localhost:27017/test}
+    addresses: ${RABBITMQ_URI:amqp://guest:guest@localhost:5672}
 
 microservice:
   exchange: ${EXCHANGE:core-game}
@@ -23,6 +21,11 @@ microservice:
   storeName: ${STORE_NAME:game}
   routingKey: ${ROUTING_KEY:cardgame.#}
 
-
+amazon:
+  dynamodb:
+    endpoint: http://localhost:4566/
+  aws:
+    accesskey: key
+    secretkey: key2
 
 

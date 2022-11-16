@@ -5,6 +5,7 @@ server:
     context-path: /queries
 spring:
   main:
+    lazy-initialization: true
     banner-mode: off
   output:
     ansi:

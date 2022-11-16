@@ -5,6 +5,7 @@ server:
     context-path: /proxy
 spring:
   main:
+    lazy-initialization: true
     banner-mode: off
   output:
     ansi:

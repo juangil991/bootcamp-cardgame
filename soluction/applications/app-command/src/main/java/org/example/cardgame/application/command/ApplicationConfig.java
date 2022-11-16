@@ -2,29 +2,22 @@ package org.example.cardgame.application.command;
 
 
 
-import com.mongodb.reactivestreams.client.MongoClient;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
+import com.amazonaws.services.sns.AmazonSNS;
+import com.amazonaws.services.sns.util.Topics;
+import com.amazonaws.services.sqs.AmazonSQS;
 import org.example.cardgame.generic.EventPublisher;
 import org.example.cardgame.generic.EventStoreRepository;
 import org.example.cardgame.generic.IntegrationHandle;
 import org.example.cardgame.generic.serialize.EventSerializer;
-import org.springframework.amqp.core.AmqpAdmin;
-import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.Queue;
-import org.springframework.amqp.core.TopicExchange;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.FilterType;
-import org.springframework.data.mongodb.core.ReactiveMongoTemplate;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
-import reactor.rabbitmq.*;
+
 
 import javax.annotation.PostConstruct;
 import java.util.Arrays;
@@ -32,6 +25,7 @@ import java.util.Arrays;
 
 
 @Configuration
+@EnableScheduling
 @ComponentScan(value="org.example.cardgame.usecase",
         useDefaultFilters = false, includeFilters = @ComponentScan.Filter
         (type = FilterType.REGEX, pattern = ".*UseCase")
@@ -39,60 +33,25 @@ import java.util.Arrays;
 public class ApplicationConfig {
 
 
-    private final  AmqpAdmin amqpAdmin;
-    private final MongoClient mongoClient;
+    private final AmazonSQS amazonSQS;
+    private final AmazonSNS amazonSNS;
     private final ConfigProperties configProperties;
 
-    public ApplicationConfig(AmqpAdmin amqpAdmin, MongoClient mongoClient, ConfigProperties configProperties) {
-        this.amqpAdmin = amqpAdmin;
-        this.mongoClient = mongoClient;
+    public ApplicationConfig(AmazonSQS amazonSQS, AmazonSNS amazonSNS, ConfigProperties configProperties) {
+        this.amazonSQS = amazonSQS;
+        this.amazonSNS = amazonSNS;
         this.configProperties = configProperties;
     }
 
     @PostConstruct
     public void init() {
-        var exchange1 = new TopicExchange(configProperties.getExchange());
-        var queue = new Queue(configProperties.getQueue(), false, false, true);
-        amqpAdmin.declareExchange(exchange1);
-        amqpAdmin.declareQueue(queue);
-        amqpAdmin.declareBinding(BindingBuilder.bind(queue).to(exchange1).with(configProperties.getRoutingKey()));
-    }
-
-    @Bean
-    public Mono<Connection> connectionMono(@Value("spring.application.name") String name) {
-        ConnectionFactory connectionFactory = new ConnectionFactory();
-        connectionFactory.useNio();
-        return Mono.fromCallable(() -> connectionFactory.newConnection(name)).cache();
-    }
-
-    @Bean
-    public SenderOptions senderOptions(Mono<Connection> connectionMono) {
-        return new SenderOptions()
-                .connectionMono(connectionMono)
-                .resourceManagementScheduler(Schedulers.boundedElastic());
-    }
-
-    @Bean
-    public Sender sender(SenderOptions senderOptions) {
-        return RabbitFlux.createSender(senderOptions);
+        var topicArn = amazonSNS.createTopic(configProperties.getExchange()).getTopicArn();
+        var queueUrl = amazonSQS.createQueue(configProperties.getQueue()).getQueueUrl();
+        Topics.subscribeQueue(amazonSNS, amazonSQS, topicArn, queueUrl);
     }
 
 
-    @Bean
-    public ReceiverOptions receiverOptions(Mono<Connection> connectionMono) {
-        return new ReceiverOptions()
-                .connectionMono(connectionMono);
-    }
 
-    @Bean
-    public Receiver receiver(ReceiverOptions receiverOptions) {
-        return RabbitFlux.createReceiver(receiverOptions);
-    }
-
-    @Bean
-    public ReactiveMongoTemplate reactiveMongoTemplate() {
-        return new ReactiveMongoTemplate(mongoClient, configProperties.getStoreName()+"db");
-    }
 
     @Bean
     public IntegrationHandle integrationHandle(EventStoreRepository repository, EventPublisher eventPublisher, EventSerializer eventSerializer){
