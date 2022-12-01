@@ -2,9 +2,17 @@ apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 
 metadata:
-  name: demo
+  name: raul-cardgame
   region: us-east-1
-
+  
+iam:
+  withOIDC: true   
+  serviceAccounts:
+    - metadata:
+        name: aws-load-balancer
+        namespace: kube-system
+      wellKnownPolicies:
+        awsLoadBalancerController: true
 vpc:
   subnets:
     private:
