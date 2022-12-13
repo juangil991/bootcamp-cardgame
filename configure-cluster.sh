@@ -1,4 +1,4 @@
-eksctl create cluster --name raul-cardgame -f cluster.yaml
+eksctl create cluster -f cluster.yaml
 ## create rol AWSLoadBalancerControllerIAMPolicy y AmazonEKS_EBS_CSI_DriverRole
 
 eksctl create iamserviceaccount \
